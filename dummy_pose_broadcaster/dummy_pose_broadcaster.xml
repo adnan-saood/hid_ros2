@@ -1,0 +1,9 @@
+<library path="dummy_pose_broadcaster">
+  <class name="dummy_pose_broadcaster/DummyPoseBroadcaster"
+         type="dummy_pose_broadcaster::DummyPoseBroadcaster"
+         base_class_type="controller_interface::ControllerInterface">
+    <description>
+      Controller that reads HID input state interfaces and publishes them as a 6DoF pose for visualization.
+    </description>
+  </class>
+</library>

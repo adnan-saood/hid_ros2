@@ -1,0 +1,34 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 250  # Hz
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    hid_generic_broadcaster:
+      type: hid_generic_broadcaster/HidGenericBroadcaster
+
+    hid_diagnostic_broadcaster:
+      type: hid_diagnostic_broadcaster/HidDiagnosticBroadcaster
+
+    signal_command_controller:
+      type: signal_command_controller/SignalCommandController
+
+hid_generic_broadcaster:
+  ros__parameters:
+    sensor_name: "signal_gen"
+    publish_rate: 100.0
+
+# TODO: Remove the need to pull device_name, vendor_id, product_id from this yaml and move it to schema
+hid_diagnostic_broadcaster:
+  ros__parameters:
+    sensor_name: "signal_gen"
+    publish_rate: 1.0
+    device_name: "Signal Generator"
+    vendor_id: "0xCAFE"
+    product_id: "0x4000"
+
+signal_command_controller:
+  ros__parameters:
+    gpio_name: "signal_params"
+    update_interval: 10.0  # seconds

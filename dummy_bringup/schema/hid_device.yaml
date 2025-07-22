@@ -1,0 +1,41 @@
+# HID Device Schema
+# This is the single source of truth for your HID device
+
+# Device metadata
+device_name: "dummy_hid_device"
+vendor_id: "0xCAFE"
+product_id: "0x4000"
+report_id: 1
+
+# ROS2 parameters
+sensor_name: "hid_input"
+frame_id: "dummy_hid_frame"
+update_rate: 250
+
+# HID Report Structure
+# Supported types: bool, int8, uint8, int16, uint16, int32, uint32, float32, float64
+# Optional 'count' field for arrays
+fields:
+  - name: "x"
+    type: "uint8"
+    description: "X position"
+
+  - name: "y"
+    type: "uint8"
+    description: "Y position"
+
+  - name: "z"
+    type: "uint8"
+    description: "Z position"
+
+  - name: "rx"
+    type: "uint8"
+    description: "X rotation"
+
+  - name: "ry"
+    type: "uint8"
+    description: "Y rotation"
+
+  - name: "rz"
+    type: "uint8"
+    description: "Z rotation"

@@ -1,0 +1,34 @@
+# Signal Generator HID Device Schema
+# Device receives parameters (a, b, c) and outputs: result = a * sin(b*t + c)
+
+device_name: "Signal Generator"
+vendor_id: "0xCAFE"
+product_id: "0x4000"
+sensor_name: "signal_gen"
+gpio_name: "signal_params"
+frame_id: "signal_gen_frame"
+update_rate: 250
+publish_rate: 100.0
+
+# Report IDs
+input_report_id: 2   # Device → PC (MCU sends with ID 2)
+output_report_id: 1  # PC → Device (MCU expects ID 1)
+
+# Input fields (device sends to PC)
+inputs:
+  - name: timestamp
+    type: float32
+
+  - name: result
+    type: float32
+
+# Output fields (PC sends to device)
+outputs:
+  - name: amplitude
+    type: float32
+
+  - name: frequency
+    type: float32
+
+  - name: phase
+    type: float32

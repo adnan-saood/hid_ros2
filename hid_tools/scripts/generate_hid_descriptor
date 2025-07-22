@@ -1,0 +1,423 @@
+#!/usr/bin/env python3
+"""
+HID Descriptor Generator Tool
+Generates C code HID descriptor from YAML schema for MCU firmware.
+"""
+
+import sys
+import argparse
+import yaml
+from pathlib import Path
+
+
+class HIDDescriptorGenerator:
+    """Generates HID descriptor C code from YAML schema."""
+
+    # HID usage page and usage IDs
+    USAGE_PAGE_VENDOR = 0xFF00
+    USAGE_VENDOR = 0x01
+
+    # Type size mapping
+    TYPE_SIZES = {
+        'uint8': 1, 'int8': 1,
+        'uint16': 2, 'int16': 2,
+        'uint32': 4, 'int32': 4,
+        'uint64': 8, 'int64': 8,
+        'float32': 4, 'float64': 8,
+    }
+
+    def __init__(self, schema_path):
+        self.schema_path = schema_path
+        self.schema = None
+
+    def load_schema(self):
+        """Load and parse YAML schema."""
+        try:
+            with open(self.schema_path) as f:
+                self.schema = yaml.safe_load(f)
+            return True
+        except Exception as e:
+            print(f"❌ Failed to load schema: {e}", file=sys.stderr)
+            return False
+
+    def calculate_report_size(self, fields):
+        """Calculate report size in bytes from field list."""
+        if not fields:
+            return 0
+
+        total_size = 0
+        for field in fields:
+            field_type = field.get('type', 'uint8')
+            count = field.get('count', 1)
+
+            if field_type not in self.TYPE_SIZES:
+                print(f"⚠️  Unknown type '{field_type}', assuming 1 byte", file=sys.stderr)
+                size = 1
+            else:
+                size = self.TYPE_SIZES[field_type]
+
+            total_size += size * count
+
+        return total_size
+
+    def generate_descriptor(self):
+        """Generate HID descriptor C code."""
+        if not self.schema:
+            print("❌ No schema loaded", file=sys.stderr)
+            return None
+
+        # Extract schema info
+        device_name = self.schema.get('device_name', 'Unknown')
+        print(f"Generating HID descriptor for device: {device_name}")
+        inputs = self.schema.get('inputs', self.schema.get('fields', []))
+        outputs = self.schema.get('outputs', [])
+
+        input_report_id = self.schema.get('input_report_id',
+                                          self.schema.get('report_id', 1))
+        output_report_id = self.schema.get('output_report_id', 2)
+
+        # Calculate report sizes
+        input_size = self.calculate_report_size(inputs)
+        output_size = self.calculate_report_size(outputs)
+
+        # Generate descriptor bytes
+        descriptor_bytes = []
+
+        # Usage Page (Vendor Defined)
+        descriptor_bytes += [0x06, self.USAGE_PAGE_VENDOR & 0xFF,
+                             (self.USAGE_PAGE_VENDOR >> 8) & 0xFF]
+
+        # Usage (Vendor Usage 1)
+        descriptor_bytes += [0x09, self.USAGE_VENDOR]
+
+        # Collection (Application)
+        descriptor_bytes += [0xA1, 0x01]
+
+        # Input report
+        if input_size > 0:
+            descriptor_bytes += self._generate_report_descriptor(
+                input_report_id, inputs, is_input=True)
+
+        # Output report
+        if output_size > 0:
+            descriptor_bytes += self._generate_report_descriptor(
+                output_report_id, outputs, is_input=False)
+
+        # End Collection
+        descriptor_bytes += [0xC0]
+
+        return descriptor_bytes, input_size, output_size, input_report_id, output_report_id
+
+    def _generate_report_descriptor(self, report_id, fields, is_input):
+        """Generate descriptor for a single report."""
+        desc = []
+
+        # Report ID
+        desc += [0x85, report_id]
+
+        # Usage (Vendor Usage 2 for output, 3 for input)
+        usage_id = 0x02 if not is_input else 0x03
+        desc += [0x09, usage_id]
+
+        # Group consecutive fields by size for efficient descriptor
+        # Build groups: [(bit_size, count), ...]
+        groups = []
+        if fields:
+            current_size = self._get_bit_size(fields[0].get('type', 'uint8'))
+            current_count = fields[0].get('count', 1)
+
+            for field in fields[1:]:
+                field_size = self._get_bit_size(field.get('type', 'uint8'))
+                field_count = field.get('count', 1)
+
+                # If same size, accumulate count
+                if field_size == current_size:
+                    current_count += field_count
+                else:
+                    # Save current group and start new one
+                    groups.append((current_size, current_count))
+                    current_size = field_size
+                    current_count = field_count
+
+            # Don't forget last group
+            groups.append((current_size, current_count))
+
+        # Generate HID items for each group
+        for bit_size, count in groups:
+            # Report Size (in bits)
+            desc += [0x75, bit_size]
+
+            # Report Count
+            desc += [0x95, count]
+
+            # Input/Output (Data, Variable, Absolute)
+            if is_input:
+                desc += [0x81, 0x02]  # Input
+            else:
+                desc += [0x91, 0x02]  # Output
+
+        return desc
+
+    def _get_bit_size(self, field_type):
+        """Get bit size for a field type."""
+        byte_size = self.TYPE_SIZES.get(field_type, 1)
+        return byte_size * 8
+
+    def format_c_array(self, descriptor_bytes):
+        """Format descriptor as C array with HID item comments."""
+        lines = []
+        i = 0
+
+        while i < len(descriptor_bytes):
+            byte = descriptor_bytes[i]
+
+            # HID descriptor items with comments
+            if byte == 0x06 and i + 2 < len(descriptor_bytes):
+                lines.append(f"    0x{byte:02X}, 0x{descriptor_bytes[i+1]:02X}, 0x{descriptor_bytes[i+2]:02X}, // USAGE_PAGE (Vendor Defined)")
+                i += 3
+            elif byte == 0x09 and i + 1 < len(descriptor_bytes):
+                usage = descriptor_bytes[i+1]
+                lines.append(f"    0x{byte:02X}, 0x{usage:02X},       // USAGE (Vendor Usage {usage})")
+                i += 2
+            elif byte == 0xA1 and i + 1 < len(descriptor_bytes):
+                lines.append(f"    0x{byte:02X}, 0x{descriptor_bytes[i+1]:02X},       // COLLECTION (Application)")
+                i += 2
+            elif byte == 0x85 and i + 1 < len(descriptor_bytes):
+                report_id = descriptor_bytes[i+1]
+                lines.append(f"    0x{byte:02X}, 0x{report_id:02X},       // REPORT_ID ({report_id})")
+                i += 2
+            elif byte == 0x75 and i + 1 < len(descriptor_bytes):
+                size = descriptor_bytes[i+1]
+                lines.append(f"    0x{byte:02X}, 0x{size:02X},       // REPORT_SIZE ({size} bits)")
+                i += 2
+            elif byte == 0x95 and i + 1 < len(descriptor_bytes):
+                count = descriptor_bytes[i+1]
+                lines.append(f"    0x{byte:02X}, 0x{count:02X},       // REPORT_COUNT ({count})")
+                i += 2
+            elif byte == 0x81 and i + 1 < len(descriptor_bytes):
+                lines.append(f"    0x{byte:02X}, 0x{descriptor_bytes[i+1]:02X},       // INPUT (Data,Var,Abs)")
+                i += 2
+            elif byte == 0x91 and i + 1 < len(descriptor_bytes):
+                lines.append(f"    0x{byte:02X}, 0x{descriptor_bytes[i+1]:02X},       // OUTPUT (Data,Var,Abs)")
+                i += 2
+            elif byte == 0xC0:
+                lines.append(f"    0x{byte:02X}              // END_COLLECTION")
+                i += 1
+            else:
+                # Unknown byte, just add it
+                lines.append(f"    0x{byte:02X},")
+                i += 1
+
+        return '\n'.join(lines)
+
+    def generate_header(self, output_path=None):
+        """Generate complete C header file."""
+        result = self.generate_descriptor()
+        if not result:
+            return False
+
+        descriptor_bytes, input_size, output_size, input_rid, output_rid = result
+
+        device_name = self.schema.get('device_name', 'Unknown')
+        device_name_upper = device_name.upper().replace('-', '_').replace(' ', '_')
+
+        # Generate header content
+        header = f"""/*
+ * HID Descriptor for {device_name}
+ * Generated from: {Path(self.schema_path).name}
+ *
+ * Auto-generated by hid_tools - DO NOT EDIT MANUALLY
+ */
+
+#ifndef {device_name_upper}_HID_DESCRIPTOR_H
+#define {device_name_upper}_HID_DESCRIPTOR_H
+
+#include <stdint.h>
+
+// Report IDs
+#define HID_INPUT_REPORT_ID   {input_rid}
+#define HID_OUTPUT_REPORT_ID  {output_rid}
+
+// Report sizes (in bytes, excluding report ID)
+#define HID_INPUT_REPORT_SIZE  {input_size}
+#define HID_OUTPUT_REPORT_SIZE {output_size}
+
+// HID Report Descriptor
+static const uint8_t hid_report_descriptor[] = {{
+{self.format_c_array(descriptor_bytes)}
+}};
+
+#define HID_REPORT_DESCRIPTOR_SIZE (sizeof(hid_report_descriptor))
+
+"""
+
+        # Add input report structure
+        if input_size > 0:
+            header += self._generate_report_struct('Input', self.schema.get('inputs',
+                                                   self.schema.get('fields', [])))
+
+        # Add output report structure
+        if output_size > 0:
+            header += self._generate_report_struct('Output', self.schema.get('outputs', []))
+
+        header += f"\n#endif // {device_name_upper}_HID_DESCRIPTOR_H\n"
+
+        # Write or print
+        if output_path:
+            try:
+                with open(output_path, 'w') as f:
+                    f.write(header)
+                print(f"✅ Generated: {output_path}")
+                return True
+            except Exception as e:
+                print(f"❌ Failed to write file: {e}", file=sys.stderr)
+                return False
+        else:
+            print(header)
+            return True
+
+    def _generate_report_struct(self, direction, fields):
+        """Generate C struct for input/output report."""
+        if not fields:
+            return ""
+
+        struct_name = f"HID{direction}Report"
+
+        lines = [f"// {direction} Report Structure"]
+        lines.append("typedef struct __attribute__((packed)) {{")
+        lines.append(f"    uint8_t report_id;  // Must be HID_{direction.upper()}_REPORT_ID")
+
+        for field in fields:
+            name = field['name']
+            field_type = field.get('type', 'uint8')
+            count = field.get('count', 1)
+            description = field.get('description', '')
+
+            # Map to C type
+            c_type = self._get_c_type(field_type)
+
+            # Build the field declaration
+            if count > 1:
+                field_decl = f"    {c_type} {name}[{count}];"
+            else:
+                field_decl = f"    {c_type} {name};"
+
+            # Add description comment if available
+            if description:
+                # Pad field declaration to align comments
+                field_decl = field_decl.ljust(30)
+                lines.append(f"{field_decl} // {description}")
+            else:
+                lines.append(field_decl)
+
+        lines.append(f"}} {struct_name};")
+        lines.append("")
+
+        return '\n'.join(lines) + '\n'
+
+    def _get_c_type(self, field_type):
+        """Convert schema type to C type."""
+        type_map = {
+            'uint8': 'uint8_t',
+            'int8': 'int8_t',
+            'uint16': 'uint16_t',
+            'int16': 'int16_t',
+            'uint32': 'uint32_t',
+            'int32': 'int32_t',
+            'uint64': 'uint64_t',
+            'int64': 'int64_t',
+            'float32': 'float',
+            'float64': 'double',
+        }
+        return type_map.get(field_type, 'uint8_t')
+
+    def print_summary(self):
+        """Print descriptor summary."""
+        result = self.generate_descriptor()
+        if not result:
+            return
+
+        descriptor_bytes, input_size, output_size, input_rid, output_rid = result
+
+        print("\n === HID Descriptor Summary ===")
+        print("=" * 70)
+        print(f"Device: {self.schema.get('device_name', 'Unknown')}")
+        print(f"Descriptor size: {len(descriptor_bytes)} bytes")
+        print()
+
+        if input_size > 0:
+            print("Input Report:")
+            print(f"  Report ID: {input_rid}")
+            print(f"  Size: {input_size} bytes")
+            inputs = self.schema.get('inputs', self.schema.get('fields', []))
+            print(f"  Fields: {len(inputs)}")
+            for field in inputs:
+                name = field['name']
+                ftype = field.get('type', 'uint8')
+                count = field.get('count', 1)
+                size = self.TYPE_SIZES.get(ftype, 1) * count
+                print(f"    - {name}: {ftype}{'['+str(count)+']' if count > 1 else ''} ({size} bytes)")
+
+        if output_size > 0:
+            print("\nOutput Report:")
+            print(f"  Report ID: {output_rid}")
+            print(f"  Size: {output_size} bytes")
+            outputs = self.schema.get('outputs', [])
+            print(f"  Fields: {len(outputs)}")
+            for field in outputs:
+                name = field['name']
+                ftype = field.get('type', 'uint8')
+                count = field.get('count', 1)
+                size = self.TYPE_SIZES.get(ftype, 1) * count
+                print(f"    - {name}: {ftype}{'['+str(count)+']' if count > 1 else ''} ({size} bytes)")
+
+
+def main():
+    """Main entry point."""
+    parser = argparse.ArgumentParser(
+        description='Generate HID descriptor C code from YAML schema',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Generate descriptor and print summary
+  ros2 run hid_tools generate_hid_descriptor my_device.yaml
+
+  # Generate C header file
+  ros2 run hid_tools generate_hid_descriptor my_device.yaml -o hid_descriptor.h
+
+  # Print descriptor bytes
+  ros2 run hid_tools generate_hid_descriptor my_device.yaml --print
+        """
+    )
+
+    parser.add_argument('schema', help='Path to schema YAML file')
+    parser.add_argument('-o', '--output', help='Output C header file path')
+    parser.add_argument('--print', action='store_true',
+                        help='Print descriptor to stdout')
+    parser.add_argument('--summary', action='store_true',
+                        help='Print descriptor summary')
+
+    args = parser.parse_args()
+
+    generator = HIDDescriptorGenerator(args.schema)
+
+    if not generator.load_schema():
+        return 1
+
+    # Print summary if requested or if no other action
+    if args.summary or (not args.output and not args.print):
+        generator.print_summary()
+        print()
+
+    # Generate header file
+    if args.output:
+        if not generator.generate_header(args.output):
+            return 1
+    elif args.print:
+        generator.generate_header()
+
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

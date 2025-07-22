@@ -1,0 +1,7 @@
+<library path="hid_diagnostic_broadcaster">
+  <class name="hid_diagnostic_broadcaster/HidDiagnosticBroadcaster" type="hid_diagnostic_broadcaster::HidDiagnosticBroadcaster" base_class_type="controller_interface::ControllerInterface">
+    <description>
+      Publishes HID device diagnostics including connection status, read rate, VID/PID, and current values
+    </description>
+  </class>
+</library>

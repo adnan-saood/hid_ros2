@@ -1,0 +1,20 @@
+<robot name="hid_robot">
+  <ros2_control name="HIDSystem" type="system">
+    <hardware>
+      <plugin>hid_hardware/HidHardware</plugin>
+      <param name="vendor_id">0xCAFE</param>
+      <param name="product_id">0x4000</param>
+    </hardware>
+
+    <sensor name="hid_input">
+      <state_interface name="report_id"/>
+      <state_interface name="byte0"/>
+      <state_interface name="byte1"/>
+      <state_interface name="byte2"/>
+      <state_interface name="byte3"/>
+      <state_interface name="byte4"/>
+      <state_interface name="byte5"/>
+    </sensor>
+
+  </ros2_control>
+</robot>

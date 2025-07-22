@@ -1,0 +1,280 @@
+#!/usr/bin/env python3
+"""
+HID Device Inspector Tool
+Inspects live USB HID devices and displays report data.
+"""
+
+import sys
+import argparse
+import time
+import struct
+
+
+try:
+    import hid
+except ImportError:
+    print("Error: 'hidapi' Python module not found.", file=sys.stderr)
+    print("Install it with: pip install hidapi", file=sys.stderr)
+    sys.exit(1)
+
+
+class HIDInspector:
+    """Inspects and monitors USB HID devices."""
+
+    def __init__(self):
+        self.device = None
+
+    def list_devices(self):
+        """List all HID devices."""
+        devices = hid.enumerate()
+
+        if not devices:
+            print("No HID devices found.")
+            return
+
+        print(f"\nFound {len(devices)} HID device(s):")
+        print("=" * 100)
+
+        for i, dev in enumerate(devices):
+            vid = dev['vendor_id']
+            pid = dev['product_id']
+            manufacturer = dev['manufacturer_string'] or 'N/A'
+            product = dev['product_string'] or 'N/A'
+            path = dev['path'].decode('utf-8') if isinstance(dev['path'], bytes) else dev['path']
+
+            print(f"\n[{i}] VID: 0x{vid:04X}  PID: 0x{pid:04X}")
+            print(f"    Manufacturer: {manufacturer}")
+            print(f"    Product:      {product}")
+            print(f"    Path:         {path}")
+
+    def open_device(self, vid, pid):
+        """Open HID device by VID/PID."""
+        try:
+            self.device = hid.device()
+            self.device.open(vid, pid)
+
+            manufacturer = self.device.get_manufacturer_string()
+            product = self.device.get_product_string()
+
+            print("\n Opened device:")
+            print(f"   VID: 0x{vid:04X}  PID: 0x{pid:04X}")
+            print(f"   Manufacturer: {manufacturer or 'N/A'}")
+            print(f"   Product: {product or 'N/A'}")
+
+            # Set non-blocking mode
+            self.device.set_nonblocking(1)
+
+            return True
+
+        except Exception as e:
+            print(f"\n❌ Failed to open device: {e}", file=sys.stderr)
+            return False
+
+    def close_device(self):
+        """Close HID device."""
+        if self.device:
+            self.device.close()
+            self.device = None
+
+    def read_reports(self, duration=None, count=None):
+        """Read and display HID input reports."""
+        if not self.device:
+            print("❌ No device open", file=sys.stderr)
+            return
+
+        print("\n📊 Reading input reports (Ctrl+C to stop)...")
+        print("=" * 100)
+
+        report_count = 0
+        start_time = time.time()
+
+        try:
+            while True:
+                # Check termination conditions
+                if duration and (time.time() - start_time) >= duration:
+                    break
+                if count and report_count >= count:
+                    break
+
+                # Read report (non-blocking)
+                data = self.device.read(64)
+
+                if data:
+                    report_count += 1
+                    timestamp = time.time() - start_time
+
+                    # Extract report ID (first byte)
+                    report_id = data[0] if data else 0
+                    payload = data[1:] if len(data) > 1 else []
+
+                    print(f"\n[{report_count:04d}] t={timestamp:.3f}s  Report ID: {report_id}")
+                    print(f"  Raw bytes ({len(data)}): {self._format_bytes(data)}")
+
+                    if payload:
+                        self._decode_payload(payload)
+                else:
+                    # No data, sleep briefly
+                    time.sleep(0.01)
+
+        except KeyboardInterrupt:
+            print("\n\n⏸️  Stopped by user")
+
+        elapsed = time.time() - start_time
+        print("\n Statistics:")
+        print(f"   Reports received: {report_count}")
+        print(f"   Duration: {elapsed:.2f}s")
+        if elapsed > 0:
+            print(f"   Average rate: {report_count/elapsed:.2f} reports/sec")
+
+    def send_report(self, report_id, data_bytes):
+        """Send output report to device."""
+        if not self.device:
+            print("❌ No device open", file=sys.stderr)
+            return False
+
+        # Construct report: [report_id, data...]
+        report = bytes([report_id]) + bytes(data_bytes)
+
+        try:
+            print("\n Sending output report:")
+            print(f"   Report ID: {report_id}")
+            print(f"   Data: {self._format_bytes(data_bytes)}")
+
+            self.device.write(report)
+            print("   ✅ Sent successfully")
+            return True
+
+        except Exception as e:
+            print(f"   ❌ Send failed: {e}", file=sys.stderr)
+            return False
+
+    def _format_bytes(self, data):
+        """Format byte array for display."""
+        if not data:
+            return "(empty)"
+        return ' '.join(f'{b:02X}' for b in data)
+
+    def _decode_payload(self, payload):
+        """Attempt to decode payload as common data types."""
+        if len(payload) < 4:
+            return
+
+        print("  Decoded:")
+
+        # Try uint32
+        if len(payload) >= 4:
+            try:
+                val = struct.unpack('<I', bytes(payload[:4]))[0]
+                print(f"    uint32[0]: {val}")
+            except Exception:
+                pass
+
+        # Try float32
+        if len(payload) >= 4:
+            try:
+                val = struct.unpack('<f', bytes(payload[:4]))[0]
+                print(f"    float32[0]: {val:.6f}")
+            except Exception:
+                pass
+
+        # Try multiple float32s
+        num_floats = len(payload) // 4
+        if num_floats > 1:
+            try:
+                floats = struct.unpack(f'<{num_floats}f', bytes(payload[:num_floats*4]))
+                print(f"    float32[0..{num_floats-1}]: {[f'{f:.6f}' for f in floats]}")
+            except Exception:
+                pass
+
+
+def parse_hex(s):
+    """Parse hex string (with or without 0x prefix)."""
+    s = s.strip()
+    if s.startswith('0x') or s.startswith('0X'):
+        return int(s, 16)
+    return int(s, 16)
+
+
+def parse_bytes(s):
+    """Parse comma-separated hex bytes (e.g., '0x01,0x02,0xFF')."""
+    parts = [p.strip() for p in s.split(',')]
+    return [parse_hex(p) for p in parts if p]
+
+
+def main():
+    """Main entry point."""
+    parser = argparse.ArgumentParser(
+        description='Inspect USB HID devices',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # List all HID devices
+  ros2 run hid_tools inspect_device --list
+
+  # Monitor input reports from device
+  ros2 run hid_tools inspect_device --vid 0xCAFE --pid 0x4000
+
+  # Read 10 reports
+  ros2 run hid_tools inspect_device --vid 0xCAFE --pid 0x4000 --count 10
+
+  # Send output report (report ID 1, data bytes)
+  ros2 run hid_tools inspect_device --vid 0xCAFE --pid 0x4000 --send 1:0x00,0x00,0x80,0x3F
+        """
+    )
+
+    parser.add_argument('--list', action='store_true',
+                        help='List all HID devices')
+    parser.add_argument('--vid', type=parse_hex,
+                        help='Vendor ID (hex, e.g., 0xCAFE)')
+    parser.add_argument('--pid', type=parse_hex,
+                        help='Product ID (hex, e.g., 0x4000)')
+    parser.add_argument('--duration', type=float,
+                        help='Read duration in seconds')
+    parser.add_argument('--count', type=int,
+                        help='Number of reports to read')
+    parser.add_argument('--send', type=str,
+                        help='Send output report (format: report_id:byte1,byte2,...)')
+
+    args = parser.parse_args()
+
+    inspector = HIDInspector()
+
+    # List devices mode
+    if args.list:
+        inspector.list_devices()
+        return 0
+
+    # Need VID/PID for device operations
+    if args.vid is None or args.pid is None:
+        parser.print_help()
+        print("\n❌ Error: --vid and --pid are required (or use --list)", file=sys.stderr)
+        return 1
+
+    # Open device
+    if not inspector.open_device(args.vid, args.pid):
+        return 1
+
+    try:
+        # Send report if requested
+        if args.send:
+            try:
+                report_id_str, data_str = args.send.split(':', 1)
+                report_id = int(report_id_str)
+                data_bytes = parse_bytes(data_str)
+                inspector.send_report(report_id, data_bytes)
+            except Exception as e:
+                print(f"❌ Invalid --send format: {e}", file=sys.stderr)
+                return 1
+
+        # Read reports (unless only sending)
+        if not args.send or args.count or args.duration:
+            inspector.read_reports(duration=args.duration, count=args.count)
+
+    finally:
+        inspector.close_device()
+
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

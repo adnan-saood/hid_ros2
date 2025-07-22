@@ -1,0 +1,10 @@
+<library path="signal_command_controller">
+  <class name="signal_command_controller/SignalCommandController"
+         type="signal_command_controller::SignalCommandController"
+         base_class_type="controller_interface::ControllerInterface">
+    <description>
+      Signal command controller that periodically updates signal generation parameters
+      (amplitude, frequency, phase) and publishes current values.
+    </description>
+  </class>
+</library>

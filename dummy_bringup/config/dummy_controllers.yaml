@@ -1,0 +1,33 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 250  # Hz
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    dummy_pose_broadcaster:
+      type: dummy_pose_broadcaster/DummyPoseBroadcaster
+
+    hid_generic_broadcaster:
+      type: hid_generic_broadcaster/HidGenericBroadcaster
+
+    hid_diagnostic_broadcaster:
+      type: hid_diagnostic_broadcaster/HidDiagnosticBroadcaster
+
+dummy_pose_broadcaster:
+  ros__parameters:
+    sensor_name: "hid_input"
+    frame_id: "dummy_hid_frame"
+
+hid_generic_broadcaster:
+  ros__parameters:
+    sensor_name: "hid_input"
+    publish_rate: 100.0
+
+hid_diagnostic_broadcaster:
+  ros__parameters:
+    sensor_name: "hid_input"
+    publish_rate: 1.0
+    device_name: "ENSTA ESP32 HID Interface"
+    vendor_id: "0xCAFE"
+    product_id: "0x4000"

@@ -1,0 +1,257 @@
+#!/usr/bin/env python3
+"""
+Schema Validator Tool
+Validates HID device YAML schemas for correctness and best practices.
+"""
+
+import sys
+import argparse
+import yaml
+from pathlib import Path
+
+
+class SchemaValidator:
+    """Validates HID device YAML schemas."""
+
+    REQUIRED_FIELDS = ['device_name', 'vendor_id', 'product_id', 'sensor_name']
+    VALID_TYPES = ['uint8', 'int8', 'uint16', 'int16', 'uint32', 'int32',
+                   'uint64', 'int64', 'float32', 'float64']
+
+    def __init__(self):
+        self.errors = []
+        self.warnings = []
+
+    def validate(self, schema_path):
+        """Validate a schema file."""
+        self.errors = []
+        self.warnings = []
+
+        # Check file exists
+        if not Path(schema_path).exists():
+            self.errors.append(f"Schema file not found: {schema_path}")
+            return False
+
+        # Load YAML
+        try:
+            with open(schema_path) as f:
+                schema = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            self.errors.append(f"YAML parsing error: {e}")
+            return False
+        except Exception as e:
+            self.errors.append(f"Failed to read file: {e}")
+            return False
+
+        if not isinstance(schema, dict):
+            self.errors.append("Schema must be a YAML dictionary")
+            return False
+
+        # Validate required fields
+        self._validate_required_fields(schema)
+
+        # Validate vendor/product IDs
+        self._validate_ids(schema)
+
+        # Validate inputs (if present)
+        if 'inputs' in schema:
+            self._validate_fields(schema['inputs'], 'inputs')
+        elif 'fields' in schema:
+            self._validate_fields(schema['fields'], 'fields')
+        else:
+            self.warnings.append("No 'inputs' or 'fields' defined - device will have no state interfaces")
+
+        # Validate outputs (if present)
+        if 'outputs' in schema:
+            self._validate_fields(schema['outputs'], 'outputs')
+            if 'gpio_name' not in schema:
+                self.warnings.append("'outputs' defined but no 'gpio_name' specified")
+
+        # Validate report IDs
+        self._validate_report_ids(schema)
+
+        # Check for common issues
+        self._check_common_issues(schema)
+
+        return len(self.errors) == 0
+
+    def _validate_required_fields(self, schema):
+        """Check all required fields are present."""
+        for field in self.REQUIRED_FIELDS:
+            if field not in schema:
+                self.errors.append(f"Missing required field: '{field}'")
+
+    def _validate_ids(self, schema):
+        """Validate vendor_id and product_id format."""
+        for id_field in ['vendor_id', 'product_id']:
+            if id_field in schema:
+                value = schema[id_field]
+                if isinstance(value, str):
+                    if not value.startswith('0x'):
+                        self.warnings.append(
+                            f"{id_field} should be in hex format (e.g., '0xCAFE'), got: {value}")
+                    else:
+                        try:
+                            int(value, 16)
+                        except ValueError:
+                            self.errors.append(f"Invalid hex format for {id_field}: {value}")
+                elif isinstance(value, int):
+                    self.warnings.append(
+                        f"{id_field} should be a hex string (e.g., '0xCAFE'), not integer")
+
+    def _validate_fields(self, fields, section_name):
+        """Validate input/output fields."""
+        if not isinstance(fields, list):
+            self.errors.append(f"'{section_name}' must be a list")
+            return
+
+        if len(fields) == 0:
+            self.warnings.append(f"'{section_name}' is empty")
+            return
+
+        seen_names = set()
+        for i, field in enumerate(fields):
+            if not isinstance(field, dict):
+                self.errors.append(f"{section_name}[{i}]: field must be a dictionary")
+                continue
+
+            # Check required field attributes
+            if 'name' not in field:
+                self.errors.append(f"{section_name}[{i}]: missing 'name'")
+                continue
+
+            name = field['name']
+
+            # Check for duplicate names
+            if name in seen_names:
+                self.errors.append(f"{section_name}: duplicate field name '{name}'")
+            seen_names.add(name)
+
+            # Validate type
+            if 'type' not in field:
+                self.warnings.append(f"{section_name}.{name}: missing 'type', will default to 'uint8'")
+            else:
+                field_type = field['type']
+                if field_type not in self.VALID_TYPES:
+                    self.errors.append(
+                        f"{section_name}.{name}: invalid type '{field_type}'. "
+                        f"Valid types: {', '.join(self.VALID_TYPES)}")
+
+            # Validate count
+            if 'count' in field:
+                count = field['count']
+                if not isinstance(count, int) or count < 1:
+                    self.errors.append(
+                        f"{section_name}.{name}: 'count' must be a positive integer, got: {count}")
+
+    def _validate_report_ids(self, schema):
+        """Validate HID report IDs."""
+        has_inputs = 'inputs' in schema or 'fields' in schema
+        has_outputs = 'outputs' in schema
+
+        if has_inputs and 'input_report_id' not in schema and 'report_id' not in schema:
+            self.warnings.append("No 'input_report_id' specified, will default to 1")
+
+        if has_outputs and 'output_report_id' not in schema:
+            self.warnings.append("No 'output_report_id' specified, will default to 2")
+
+        # Check report ID values
+        for rid_field in ['input_report_id', 'output_report_id', 'report_id']:
+            if rid_field in schema:
+                rid = schema[rid_field]
+                if not isinstance(rid, int) or rid < 1 or rid > 255:
+                    self.errors.append(
+                        f"{rid_field} must be an integer between 1 and 255, got: {rid}")
+
+    def _check_common_issues(self, schema):
+        """Check for common configuration issues."""
+        # Check update rate
+        if 'update_rate' in schema:
+            rate = schema['update_rate']
+            if not isinstance(rate, (int, float)) or rate <= 0:
+                self.errors.append(f"update_rate must be positive, got: {rate}")
+            elif rate > 1000:
+                self.warnings.append(
+                    f"update_rate is very high ({rate} Hz). Are you sure?")
+
+        # Check publish rate
+        if 'publish_rate' in schema:
+            pub_rate = schema['publish_rate']
+            if not isinstance(pub_rate, (int, float)) or pub_rate <= 0:
+                self.errors.append(f"publish_rate must be positive, got: {pub_rate}")
+
+        # Warn about old 'fields' format
+        if 'fields' in schema and 'inputs' not in schema:
+            self.warnings.append(
+                "Using deprecated 'fields' format. Consider migrating to 'inputs' format.")
+
+    def print_results(self, schema_path):
+        """Print validation results."""
+        print(f"\nValidating: {schema_path}")
+        print("=" * 70)
+
+        if self.errors:
+            print(f"\n❌ ERRORS ({len(self.errors)}):")
+            for error in self.errors:
+                print(f"  • {error}")
+
+        if self.warnings:
+            print(f"\n⚠️  WARNINGS ({len(self.warnings)}):")
+            for warning in self.warnings:
+                print(f"  • {warning}")
+
+        if not self.errors and not self.warnings:
+            print("\n✅ Schema is valid!")
+        elif not self.errors:
+            print(f"\n✅ Schema is valid (with {len(self.warnings)} warnings)")
+        else:
+            print(f"\n❌ Schema has {len(self.errors)} error(s)")
+
+        print()
+        return len(self.errors) == 0
+
+
+def main():
+    """Main entry point."""
+    parser = argparse.ArgumentParser(
+        description='Validate HID device YAML schema',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Validate a single schema
+  ros2 run hid_tools validate_schema my_device.yaml
+
+  # Validate multiple schemas
+  ros2 run hid_tools validate_schema schema1.yaml schema2.yaml
+        """
+    )
+    parser.add_argument('schemas', nargs='+', help='Path(s) to schema YAML file(s)')
+    parser.add_argument('--strict', action='store_true',
+                        help='Treat warnings as errors')
+
+    args = parser.parse_args()
+
+    validator = SchemaValidator()
+    all_valid = True
+
+    for schema_path in args.schemas:
+        validator.validate(schema_path)
+        success = validator.print_results(schema_path)
+
+        if args.strict and validator.warnings:
+            print("⚠️  Strict mode: treating warnings as errors")
+            success = False
+
+        all_valid = all_valid and success
+
+    if len(args.schemas) > 1:
+        print("=" * 70)
+        if all_valid:
+            print(f"✅ All {len(args.schemas)} schemas are valid!")
+        else:
+            print("❌ Some schemas have errors")
+
+    return 0 if all_valid else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())

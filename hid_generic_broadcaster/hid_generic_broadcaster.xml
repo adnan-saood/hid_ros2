@@ -1,0 +1,10 @@
+<library path="hid_generic_broadcaster">
+  <class name="hid_generic_broadcaster/HidGenericBroadcaster"
+         type="hid_generic_broadcaster::HidGenericBroadcaster"
+         base_class_type="controller_interface::ControllerInterface">
+    <description>
+      Generic HID broadcaster that automatically adapts to any HID device schema.
+      Reads all available state interfaces and publishes them as Float64MultiArray.
+    </description>
+  </class>
+</library>
