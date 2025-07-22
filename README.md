@@ -1,6 +1,11 @@
 hid_hardware
 ==========================================
 
+# ndisys_ros2
+[![Licence](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![CI](https://github.com/adnan-saood/hid_ros2/actions/workflows/ci.yaml/badge.svg)](https://github.com/adnan-saood/hid_ros2/actions/workflows/ci.yaml)
+
+
 Human Interface Device (HID) Hardware Interface for ROS2
 
 ![Licence](https://img.shields.io/badge/License-Apache-2.0-blue.svg)
