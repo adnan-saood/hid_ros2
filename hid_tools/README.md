@@ -8,7 +8,7 @@ The `hid_tools` package provides three essential command-line tools to streamlin
 
 1. **`validate_schema`** - Validate YAML schema files before code generation
 2. **`inspect_device`** - Live USB HID device inspector and monitor
-3. **`generate_hid_descriptor`** - Generate C code HID descriptors for MCU firmware
+3. **`generate_hid_report_device`** - Generate C code HID descriptors for MCU firmware
 
 These tools help developers create, debug, and validate HID devices without manually writing error-prone code.
 
@@ -143,7 +143,7 @@ ros2 run hid_tools inspect_device --vid 0xCAFE --pid 0x4000 \
    Average rate: 9.96 reports/sec
 ```
 
-### 3. generate_hid_descriptor
+### 3. generate_hid_report_device
 
 Generates C code HID descriptor from YAML schema for MCU firmware.
 
@@ -159,16 +159,16 @@ Generates C code HID descriptor from YAML schema for MCU firmware.
 
 ```bash
 # Print descriptor summary
-ros2 run hid_tools generate_hid_descriptor my_device.yaml
+ros2 run hid_tools generate_hid_report_device my_device.yaml
 
 # Generate C header file
-ros2 run hid_tools generate_hid_descriptor my_device.yaml -o hid_descriptor.h
+ros2 run hid_tools generate_hid_report_device my_device.yaml -o hid_descriptor.h
 
 # Print full descriptor to stdout
-ros2 run hid_tools generate_hid_descriptor my_device.yaml --print
+ros2 run hid_tools generate_hid_report_device my_device.yaml --print
 
 # Just the summary
-ros2 run hid_tools generate_hid_descriptor my_device.yaml --summary
+ros2 run hid_tools generate_hid_report_device my_device.yaml --summary
 ```
 
 **Example Output (Summary):**
@@ -257,7 +257,7 @@ vim my_device.yaml
 ros2 run hid_tools validate_schema my_device.yaml
 
 # 3. Generate HID descriptor for firmware
-ros2 run hid_tools generate_hid_descriptor my_device.yaml -o firmware/hid_desc.h
+ros2 run hid_tools generate_hid_report_device my_device.yaml -o firmware/hid_desc.h
 
 # 4. Generate ROS 2 files
 ros2 run hid_descriptor_generator generate_hid_files my_device.yaml
@@ -305,7 +305,7 @@ All tools support the following data types:
 - **Permission denied**: Check udev rules for USB HID access
 - **No data**: Reports statistics even if zero reports received
 
-### generate_hid_descriptor
+### generate_hid_report_device
 
 - **YAML errors**: Reports parsing errors with line numbers
 - **Unknown types**: Uses uint8 as fallback with warning

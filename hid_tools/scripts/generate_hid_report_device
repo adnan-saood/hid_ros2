@@ -380,13 +380,13 @@ def main():
         epilog="""
 Examples:
   # Generate descriptor and print summary
-  ros2 run hid_tools generate_hid_descriptor my_device.yaml
+  ros2 run hid_tools generate_hid_report_device my_device.yaml
 
   # Generate C header file
-  ros2 run hid_tools generate_hid_descriptor my_device.yaml -o hid_descriptor.h
+  ros2 run hid_tools generate_hid_report_device my_device.yaml -o hid_descriptor.h
 
   # Print descriptor bytes
-  ros2 run hid_tools generate_hid_descriptor my_device.yaml --print
+  ros2 run hid_tools generate_hid_report_device my_device.yaml --print
         """
     )
 

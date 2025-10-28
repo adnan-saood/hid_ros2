@@ -12,7 +12,7 @@ find_package(ament_cmake REQUIRED)
 install(PROGRAMS
   scripts/validate_schema
   scripts/inspect_device
-  scripts/generate_hid_descriptor
+  scripts/generate_hid_report_device
   DESTINATION lib/${PROJECT_NAME}
 )
 

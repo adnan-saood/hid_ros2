@@ -32,21 +32,18 @@
 namespace hid_hardware
 {
 
-class HidHardware : public hardware_interface::SystemInterface
-{
-public:
-  hardware_interface::CallbackReturn on_init(
-    const hardware_interface::HardwareInfo & info) override
+  hardware_interface::CallbackReturn HidHardware::on_init(
+    const hardware_interface::HardwareInfo & info)
   {
     if (SystemInterface::on_init(info) != hardware_interface::CallbackReturn::SUCCESS) {
       return hardware_interface::CallbackReturn::ERROR;
     }
 
     // Get vendor_id and product_id from parameters
-    vendor_id_ = static_cast<uint8_t>
+    vendor_id_ = static_cast<uint16_t>
     (std::stoul(info_.hardware_parameters.at("vendor_id"), nullptr, 16));
 
-    product_id_ = static_cast<uint8_t>
+    product_id_ = static_cast<uint16_t>
     (std::stoul(info_.hardware_parameters.at("product_id"), nullptr, 16));
 
     RCLCPP_INFO(rclcpp::get_logger("HidHardware"),
@@ -108,7 +105,13 @@ public:
     return hardware_interface::CallbackReturn::SUCCESS;
   }
 
-  std::vector<hardware_interface::StateInterface> export_state_interfaces() override
+  hardware_interface::CallbackReturn HidHardware::on_configure(const rclcpp_lifecycle::State & /*previous_state*/)
+  {
+    return hardware_interface::CallbackReturn::SUCCESS;
+  }
+
+
+  std::vector<hardware_interface::StateInterface> HidHardware::export_state_interfaces()
   {
     std::vector<hardware_interface::StateInterface> state_interfaces;
 
@@ -136,7 +139,7 @@ public:
     return state_interfaces;
   }
 
-  std::vector<hardware_interface::CommandInterface> export_command_interfaces() override
+  std::vector<hardware_interface::CommandInterface> HidHardware::export_command_interfaces()
   {
     std::vector<hardware_interface::CommandInterface> command_interfaces;
 
@@ -158,8 +161,19 @@ public:
     return command_interfaces;
   }
 
-  hardware_interface::return_type read(
-    const rclcpp::Time &, const rclcpp::Duration &) override
+
+  hardware_interface::CallbackReturn HidHardware::on_activate(const rclcpp_lifecycle::State & /*previous_state*/)
+  {
+    return hardware_interface::CallbackReturn::SUCCESS;
+  }
+
+  hardware_interface::CallbackReturn HidHardware::on_deactivate(const rclcpp_lifecycle::State & /*previous_state*/)
+  {
+    return hardware_interface::CallbackReturn::SUCCESS;
+  }
+
+  hardware_interface::return_type HidHardware::read(
+    const rclcpp::Time &, const rclcpp::Duration &)
   {
     if (!hid_device_) {
       // Device not connected, just return OK without reading
@@ -243,8 +257,8 @@ public:
     return hardware_interface::return_type::OK;
   }
 
-  hardware_interface::return_type write(
-    const rclcpp::Time &, const rclcpp::Duration &) override
+  hardware_interface::return_type HidHardware::write(
+    const rclcpp::Time &, const rclcpp::Duration &)
   {
     if (!hid_device_) {
       // Device not connected, just return OK without writing
@@ -261,7 +275,7 @@ public:
     std::vector<unsigned char> output_buffer;
 
     // Add report ID (configurable via URDF param)
-    uint8_t output_report_id = 2;  // Default output report ID
+    uint8_t output_report_id = 1;  // Default output report ID
     if (info_.hardware_parameters.count("output_report_id")) {
       output_report_id = static_cast<uint8_t>(
         std::stoul(info_.hardware_parameters.at("output_report_id"), nullptr, 0));
@@ -312,8 +326,7 @@ public:
     return hardware_interface::return_type::OK;
   }
 
-private:
-  void parse_type_info() {
+  void HidHardware::parse_type_info() {
     // Parse state types
     if (info_.hardware_parameters.count("state_types")) {
       state_types_str_ = info_.hardware_parameters.at("state_types");
@@ -334,7 +347,7 @@ private:
     }
   }
 
-  std::vector<std::string> split_string(const std::string& s, char delimiter) {
+  std::vector<std::string> HidHardware::split_string(const std::string& s, char delimiter) {
     std::vector<std::string> tokens;
     std::string token;
     std::istringstream tokenStream(s);
@@ -344,7 +357,7 @@ private:
     return tokens;
   }
 
-  size_t get_type_size(const std::string& type) {
+  size_t HidHardware::get_type_size(const std::string& type) {
     if (type == "uint8" || type == "int8") return 1;
     if (type == "uint16" || type == "int16") return 2;
     if (type == "uint32" || type == "int32" || type == "float32") return 4;
@@ -354,7 +367,7 @@ private:
     return 1;
   }
 
-  double bytes_to_value(const unsigned char* bytes, const std::string& type) {
+  double HidHardware::bytes_to_value(const unsigned char* bytes, const std::string& type) {
     if (type == "uint8") {
       return static_cast<double>(bytes[0]);
     } else if (type == "int8") {
@@ -387,7 +400,7 @@ private:
     return static_cast<double>(bytes[0]);  // Default: uint8
   }
 
-  void value_to_bytes(double value, const std::string& type, unsigned char* bytes) {
+  void HidHardware::value_to_bytes(double value, const std::string& type, unsigned char* bytes) {
     if (type == "uint8") {
       bytes[0] = static_cast<uint8_t>(value);
     } else if (type == "int8") {
@@ -415,7 +428,7 @@ private:
     }
   }
 
-  void detect_report_size() {
+  void HidHardware::detect_report_size() {
     // Try different buffer sizes to detect the actual report size
     // This is a heuristic approach since hidapi doesn't provide direct API
     std::vector<size_t> common_sizes = {1, 2, 4, 5, 8, 16, 32, 64};
@@ -445,20 +458,6 @@ private:
     hid_set_nonblocking(hid_device_, 0);
   }
 
-  std::vector<double> state_data;
-  std::vector<double> command_data;
-  std::vector<uint8_t> input_buffer_;
-
-  hid_device * hid_device_{nullptr};
-  uint8_t vendor_id_{0};
-  uint8_t product_id_{0};
-  size_t input_report_size_{0};
-
-  std::vector<std::string> state_types_;
-  std::vector<std::string> command_types_;
-  std::string state_types_str_;
-  std::string command_types_str_;
-};
 
 }  // namespace hid_hardware
 

@@ -36,7 +36,7 @@ public:
   using HW_RETURN_TYPE = hardware_interface::return_type;
 
   CALLBACK_RETURN on_init(const hardware_interface::HardwareInfo & info) override;
-  CALLBACK_RETURN on_configure(const rclcpp_lifecycle::State & previous_state) override;
+  CALLBACK_RETURN on_configure(const rclcpp_lifecycle::State & previous_state) override; 
   std::vector<hardware_interface::StateInterface> export_state_interfaces() override;
   std::vector<hardware_interface::CommandInterface> export_command_interfaces() override;
   CALLBACK_RETURN on_activate(const rclcpp_lifecycle::State & previous_state) override;
@@ -45,16 +45,27 @@ public:
   HW_RETURN_TYPE write(const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
 private:
-  // Wrapper for low-level HID communication
-  std::unique_ptr<HidDevice> hid_device_;
 
-  // Store device parameters from URDF
-  int vendor_id_;
-  int product_id_;
+  void parse_type_info();
+  std::vector<std::string> split_string(const std::string& s, char delimiter);
+  size_t get_type_size(const std::string& type);
+  double bytes_to_value(const unsigned char* bytes, const std::string& type);
+  void value_to_bytes(double value, const std::string& type, unsigned char* bytes);
+  void detect_report_size();
 
-  // Store the commands and states for the hardware interfaces
-  std::vector<double> hw_commands_;
-  std::vector<double> hw_states_;
+  std::vector<double> state_data;
+  std::vector<double> command_data;
+  std::vector<uint8_t> input_buffer_;
+
+  hid_device * hid_device_{nullptr};
+  uint16_t vendor_id_{0};
+  uint16_t product_id_{0};
+  size_t input_report_size_{0};
+
+  std::vector<std::string> state_types_;
+  std::vector<std::string> command_types_;
+  std::string state_types_str_;
+  std::string command_types_str_;
 };
 
 }  // namespace hid_hardware

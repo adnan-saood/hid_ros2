@@ -11,7 +11,7 @@ The `hid_tools` package has been created with three essential developer tools:
 - Supports strict mode (warnings as errors)
 - **Status**: Built and tested successfully
 
-### 2. **generate_hid_descriptor** ✅
+### 2. **generate_hid_report_device** ✅
 - Generates C header files with HID descriptors
 - Creates type-safe report structures
 - Auto-calculates report sizes
@@ -55,7 +55,7 @@ Validating: /home/adnan/dev/hid_ros2/signal_generator_bringup/schema/signal_gene
 
 ### Descriptor Generation
 ```bash
-$ ros2 run hid_tools generate_hid_descriptor signal_generator_bringup/schema/signal_generator.yaml --summary
+$ ros2 run hid_tools generate_hid_report_device signal_generator_bringup/schema/signal_generator.yaml --summary
 
 📋 HID Descriptor Summary
 ======================================================================
@@ -80,7 +80,7 @@ Output Report:
 
 ### C Header Generation
 ```bash
-$ ros2 run hid_tools generate_hid_descriptor signal_generator.yaml -o hid_descriptor.h
+$ ros2 run hid_tools generate_hid_report_device signal_generator.yaml -o hid_descriptor.h
 ✅ Generated: hid_descriptor.h
 ```
 
@@ -102,7 +102,7 @@ hid_tools/
 └── scripts/
     ├── validate_schema         # Schema validator (355 lines)
     ├── inspect_device          # USB HID inspector (353 lines)
-    └── generate_hid_descriptor # C code generator (367 lines)
+    └── generate_hid_report_device # C code generator (367 lines)
 ```
 
 ## Key Features
@@ -145,7 +145,7 @@ hid_tools/
 
 3. **Integrate into workflow**:
    - Add `validate_schema` to CI/CD pipelines
-   - Use `generate_hid_descriptor` for firmware development
+   - Use `generate_hid_report_device` for firmware development
    - Use `inspect_device` for debugging bidirectional communication
 
 4. **Add to documentation**:
@@ -168,7 +168,7 @@ Comprehensive README.md created with:
 | Tool | Build | Test | Notes |
 |------|-------|------|-------|
 | validate_schema | ✅ | ✅ | Tested with signal_generator.yaml |
-| generate_hid_descriptor | ✅ | ✅ | Tested with signal_generator.yaml |
+| generate_hid_report_device | ✅ | ✅ | Tested with signal_generator.yaml |
 | inspect_device | ✅ | ⚠️ | Requires hidapi, not tested with hardware |
 
 ## Benefits to Users
@@ -184,7 +184,7 @@ Comprehensive README.md created with:
 
 - **validate_schema**: 355 lines
 - **inspect_device**: 353 lines
-- **generate_hid_descriptor**: 367 lines
+- **generate_hid_report_device**: 367 lines
 - **README.md**: 382 lines
 - **Total**: ~1,457 lines of new code + documentation
 

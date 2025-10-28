@@ -145,7 +145,7 @@ controller_interface::CallbackReturn HidDiagnosticBroadcaster::on_deactivate(
 }
 
 controller_interface::return_type HidDiagnosticBroadcaster::update(
-  const rclcpp::Time & time, const rclcpp::Duration & period)
+  const rclcpp::Time & time, const rclcpp::Duration & /*period*/)
 {
   // Track update rate
   read_count_++;
