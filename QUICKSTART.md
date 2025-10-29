@@ -211,17 +211,10 @@ ros2 topic echo /hid_input_states  # If using joint_state_broadcaster
 ## Tips
 
 1. **Match firmware and schema**: Keep your YAML schema in version control alongside firmware
-2. **Report ID**: Use 0 to disable report ID (single report type devices)
-3. **Update rate**: Higher rates (500-1000 Hz) for gaming mice, lower (100-250 Hz) for sensors
-4. **Frame ID**: Use descriptive names like `mouse_frame`, `joystick_frame`, etc.
-5. **Regeneration**: Files regenerate automatically when you modify the YAML and rebuild
+2. **Update rate**: Higher rates (500-1000 Hz) for gaming mice, lower (100-250 Hz) for sensors
+3. **Frame ID**: Use descriptive names like `mouse_frame`, `joystick_frame`, etc.
+4. **Regeneration**: Files regenerate automatically when you modify the YAML and rebuild
 
-## Next Steps
-
-- Modify `/home/adnan/dev/hid_ros2/dummy_bringup/schema/hid_device.yaml` for your device
-- Implement your custom controller in `dummy_pose_broadcaster`
-- Add visualization in RViz
-- Integrate with your robot application
 
 ## Troubleshooting
 
