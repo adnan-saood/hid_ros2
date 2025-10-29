@@ -13,6 +13,10 @@ HID ROS 2 is a comprehensive framework for integrating USB HID devices with ROS 
    :target: https://github.com/adnan-saood/hid_ros2/actions/workflows/ci.yaml
    :alt: CI Status
 
+.. image:: https://zenodo.org/badge/1022072366.svg
+  :target: https://doi.org/10.5281/zenodo.17479215
+  :alt: DOI
+
 Key Features
 ------------
 

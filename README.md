@@ -4,6 +4,9 @@
 [![CI](https://github.com/adnan-saood/hid_ros2/actions/workflows/ci.yaml/badge.svg)](https://github.com/adnan-saood/hid_ros2/actions/workflows/ci.yaml)
 [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://adnan-saood.github.io/hid_ros2/)
 
+Citation
+[![DOI](https://zenodo.org/badge/1022072366.svg)](https://doi.org/10.5281/zenodo.17479215)
+
 **A schema-driven ROS 2 hardware interface for USB Human Interface Devices (HID)**
 
 ## Overview
@@ -386,6 +389,9 @@ Built on the robust `ros2_control` framework and designed for seamless integrati
     - [Controller Packages](#controller-packages)
     - [Example Packages](#example-packages)
   - [Documentation](#documentation)
+    - [Online Documentation](#online-documentation)
+    - [Quick References](#quick-references)
+    - [Building Documentation Locally](#building-documentation-locally)
   - [Supported Data Types](#supported-data-types)
   - [Development Workflow](#development-workflow)
     - [1. Schema Development](#1-schema-development)
