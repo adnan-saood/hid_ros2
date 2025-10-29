@@ -43,9 +43,8 @@ jobs:
         run: pip install pre-commit
 
       - name: Run pre-commit
-        shell: bash
         run: |
-          source /opt/ros/humble/setup.bash
+          . /opt/ros/humble/setup.sh
           pre-commit run --all-files --show-diff-on-failure
 
   build-and-test:
@@ -90,24 +89,21 @@ jobs:
       - name: Install ROS dependencies
         run: |
           apt update && apt upgrade -y
-          source /opt/ros/${{ matrix.ros_distro }}/setup.sh
+          . /opt/ros/${{ matrix.ros_distro }}/setup.sh
           rosdep update
           rosdep install --from-paths src --ignore-src -r -y
 
       - name: Build workspace
-        shell: bash
         run: |
           . /opt/ros/${{ matrix.ros_distro }}/setup.sh
           colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
       - name: Run tests
-        shell: bash
         run: |
           . /opt/ros/${{ matrix.ros_distro }}/setup.sh
           colcon test --event-handlers console_direct+
 
       - name: Display test results
-        shell: bash
         run: |
           colcon test-result --all --verbose
 
@@ -153,24 +149,21 @@ jobs:
 
       - name: Install ROS dependencies
         run: |
-          source /opt/ros/humble/setup.bash
+          . /opt/ros/humble/setup.sh
           rosdep update
           rosdep install --from-paths src --ignore-src -r -y
 
       - name: Build workspace with coverage
-        shell: bash
         run: |
           . /opt/ros/humble/setup.sh
           colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" -DCMAKE_C_FLAGS="--coverage"
 
       - name: Run tests
-        shell: bash
         run: |
           . /opt/ros/humble/setup.sh
           colcon test --event-handlers console_direct+
 
       - name: Generate coverage report
-        shell: bash
         run: |
           . /opt/ros/humble/setup.sh
           gcovr --xml coverage.xml --root . --exclude-unreachable-branches --exclude-throw-branches -e ".*/test/.*" -e ".*/build/.*"
