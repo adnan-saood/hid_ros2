@@ -2,37 +2,37 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   lint:
     name: Code Quality
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-      
+          python-version: "3.10"
+
       - name: Cache pre-commit
         uses: actions/cache@v4
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
-      
+
       - name: Install pre-commit
         run: pip install pre-commit
-      
+
       - name: Run pre-commit
         run: pre-commit run --all-files --show-diff-on-failure
 
   build-and-test:
     name: Build & Test (${{ matrix.ros_distro }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -40,48 +40,63 @@ jobs:
     container:
       image: ros:${{ matrix.ros_distro }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          path: src/hid_ros2
+
+      - name: Setup ROS2
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: ${{ matrix.ros_distro }}
+
       - name: Install system dependencies
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
             libhidapi-dev \
             python3-pip \
+            python3-yaml \
             lcov \
             gcovr
           rm -rf /var/lib/apt/lists/*
-      
+      - name: Install Python dependencies
+        run: |
+          pip3 install hidapi
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           path: src/hid_ros2
-      
+
       - name: Install ROS dependencies
         run: |
-          . /opt/ros/${{ matrix.ros_distro }}/setup.sh
+          apt update && apt upgrade -y
+          source /opt/ros/${{ matrix.ros_distro }}/setup.sh
           rosdep update
           rosdep install --from-paths src --ignore-src -r -y
-      
+
       - name: Build workspace
         run: |
-          . /opt/ros/${{ matrix.ros_distro }}/setup.sh
+          source /opt/ros/${{ matrix.ros_distro }}/setup.sh
           colcon build \
             --cmake-args \
               -DCMAKE_BUILD_TYPE=Release \
               -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             --event-handlers console_direct+
-      
+
       - name: Run tests
         run: |
-          . /opt/ros/${{ matrix.ros_distro }}/setup.sh
+          source /opt/ros/${{ matrix.ros_distro }}/setup.sh
           colcon test \
             --event-handlers console_direct+ \
             --return-code-on-test-failure
-      
+
       - name: Show test results
         if: always()
         run: |
           colcon test-result --verbose
-      
+
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
@@ -89,7 +104,7 @@ jobs:
           name: test-results-${{ matrix.ros_distro }}
           path: log/latest_test/
           retention-days: 30
-      
+
       - name: Upload build logs on failure
         uses: actions/upload-artifact@v4
         if: failure()
@@ -100,44 +115,49 @@ jobs:
 
   coverage:
     name: Code Coverage
-    runs-on: ubuntu-latest
-    container:
-      image: ros:humble
+    runs-on: ubuntu-22.04
     steps:
-      - name: Install dependencies
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends \
-            libhidapi-dev \
-            python3-pip \
-            gcovr
-          rm -rf /var/lib/apt/lists/*
-      
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           path: src/hid_ros2
-      
+
+      - name: Setup ROS2
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: humble
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libhidapi-dev \
+            python3-pip \
+            python3-yaml \
+            gcovr
+          pip3 install hidapi
+
       - name: Install ROS dependencies
         run: |
-          . /opt/ros/humble/setup.sh
+          source /opt/ros/humble/setup.bash
           rosdep update
           rosdep install --from-paths src --ignore-src -r -y
-      
+
       - name: Build with coverage
         run: |
-          . /opt/ros/humble/setup.sh
+          source /opt/ros/humble/setup.bash
           colcon build \
             --cmake-args \
               -DCMAKE_BUILD_TYPE=Debug \
               -DCMAKE_CXX_FLAGS="--coverage" \
               -DCMAKE_C_FLAGS="--coverage" \
             --event-handlers console_direct+
-      
+
       - name: Run tests
         run: |
-          . /opt/ros/humble/setup.sh
+          source /opt/ros/humble/setup.bash
           colcon test --event-handlers console_direct+
-      
+
       - name: Generate coverage report
         run: |
           gcovr -r . \
@@ -150,7 +170,7 @@ jobs:
             --exclude '.*test.*' \
             --xml coverage.xml \
             --print-summary
-      
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:

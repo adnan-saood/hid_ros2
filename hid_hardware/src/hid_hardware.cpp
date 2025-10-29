@@ -105,7 +105,8 @@ namespace hid_hardware
     return hardware_interface::CallbackReturn::SUCCESS;
   }
 
-  hardware_interface::CallbackReturn HidHardware::on_configure(const rclcpp_lifecycle::State & /*previous_state*/)
+  hardware_interface::CallbackReturn HidHardware::on_configure
+        (const rclcpp_lifecycle::State & /*previous_state*/)
   {
     return hardware_interface::CallbackReturn::SUCCESS;
   }
@@ -162,12 +163,14 @@ namespace hid_hardware
   }
 
 
-  hardware_interface::CallbackReturn HidHardware::on_activate(const rclcpp_lifecycle::State & /*previous_state*/)
+  hardware_interface::CallbackReturn HidHardware::on_activate
+        (const rclcpp_lifecycle::State & /*previous_state*/)
   {
     return hardware_interface::CallbackReturn::SUCCESS;
   }
 
-  hardware_interface::CallbackReturn HidHardware::on_deactivate(const rclcpp_lifecycle::State & /*previous_state*/)
+  hardware_interface::CallbackReturn HidHardware::on_deactivate
+        (const rclcpp_lifecycle::State & /*previous_state*/)
   {
     return hardware_interface::CallbackReturn::SUCCESS;
   }

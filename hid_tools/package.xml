@@ -10,7 +10,7 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclpy</depend>
-  <depend>pyyaml</depend>
+  <depend>python3-yaml</depend>
 
   <!-- Python dependencies (install via pip) -->
   <!-- hidapi: required for inspect_device tool -->

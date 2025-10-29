@@ -123,7 +123,7 @@ controller_interface::return_type DummyPoseBroadcaster::update(
           return iface.get_value();
         }
       }
-      return 0.0; // Default if not found
+      return 0.0;  // Default if not found
     };
 
   // Read values by searching for interface name suffixes

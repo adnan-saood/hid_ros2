@@ -36,7 +36,7 @@ public:
   using HW_RETURN_TYPE = hardware_interface::return_type;
 
   CALLBACK_RETURN on_init(const hardware_interface::HardwareInfo & info) override;
-  CALLBACK_RETURN on_configure(const rclcpp_lifecycle::State & previous_state) override; 
+  CALLBACK_RETURN on_configure(const rclcpp_lifecycle::State & previous_state) override;
   std::vector<hardware_interface::StateInterface> export_state_interfaces() override;
   std::vector<hardware_interface::CommandInterface> export_command_interfaces() override;
   CALLBACK_RETURN on_activate(const rclcpp_lifecycle::State & previous_state) override;
@@ -45,7 +45,6 @@ public:
   HW_RETURN_TYPE write(const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
 private:
-
   void parse_type_info();
   std::vector<std::string> split_string(const std::string& s, char delimiter);
   size_t get_type_size(const std::string& type);
