@@ -53,7 +53,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ros_distro: [humble, iron]
+        ros_distro: [humble]
     container:
       image: ros:${{ matrix.ros_distro }}
     steps:
