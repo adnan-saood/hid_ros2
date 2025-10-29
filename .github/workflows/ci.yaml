@@ -45,7 +45,7 @@ jobs:
       - name: Run pre-commit
         run: |
           . /opt/ros/humble/setup.sh
-          pre-commit run --all-files --show-diff-on-failure
+          AMENT_CPPCHECK_ALLOW_SLOW_VERSIONS=1 pre-commit run --all-files --show-diff-on-failure
 
   build-and-test:
     name: Build & Test (${{ matrix.ros_distro }})
