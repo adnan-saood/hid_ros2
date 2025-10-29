@@ -1,0 +1,14 @@
+# GitHub Pages configuration
+# This file is not strictly necessary but documents the setup
+
+# Site settings
+title: HID ROS 2 Documentation
+description: Schema-driven ROS 2 hardware interface for USB Human Interface Devices
+baseurl: /hid_ros2
+url: https://adnan-saood.github.io
+
+# Build settings
+# Sphinx builds are handled by GitHub Actions, not Jekyll
+include:
+  - _static
+  - _sources

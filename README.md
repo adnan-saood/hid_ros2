@@ -2,8 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI](https://github.com/adnan-saood/hid_ros2/actions/workflows/ci.yaml/badge.svg)](https://github.com/adnan-saood/hid_ros2/actions/workflows/ci.yaml)
-
-**A schema-driven ROS 2 hardware interface for USB Human Interface Devices (HID)**
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://adnan-saood.github.io/hid_ros2/)
 
 **A schema-driven ROS 2 hardware interface for USB Human Interface Devices (HID)**
 
@@ -175,10 +174,31 @@ This repository contains several packages working together:
 
 ## Documentation
 
-- **[QUICKSTART.md](QUICKSTART.md)**: Comprehensive quick-start guide with examples
+### Online Documentation
+
+**Full documentation is available at: https://adnan-saood.github.io/hid_ros2/**
+
+The documentation includes:
+- Complete installation guide
+- Tutorials and examples
+- API reference
+- Advanced topics and troubleshooting
+
+### Quick References
+
+- **[QUICKSTART.md](QUICKSTART.md)**: Quick-start guide for getting started fast
 - **[CONTRIBUTING.md](CONTRIBUTING.md)**: Development guidelines and contribution workflow
-- **[hid_tools/README.md](hid_tools/README.md)**: Complete reference for developer tools
-- **[hid_descriptor_generator/README.md](hid_descriptor_generator/README.md)**: Code generation documentation
+- **[hid_tools/README.md](hid_tools/README.md)**: Developer tools reference
+- **[hid_descriptor_generator/README.md](hid_descriptor_generator/README.md)**: Code generation details
+
+### Building Documentation Locally
+
+```bash
+cd docs
+pip install -r requirements.txt
+make html
+# Open docs/build/html/index.html in browser
+```
 
 ## Supported Data Types
 
@@ -260,34 +280,6 @@ ros2 run hid_tools inspect_device --vid 0x046d --pid 0xc07e
 ros2 run hid_tools inspect_device --vid 0x046d --pid 0xc07e \
   --send 1:0x00,0x00,0x80,0x3F
 ```
-
-## Testing
-
-The project includes comprehensive testing infrastructure:
-
-```bash
-# Run all tests
-colcon test
-
-# View test results
-colcon test-result --all --verbose
-
-# Run tests with coverage
-colcon build --cmake-args -DCMAKE_BUILD_TYPE=Debug \
-  -DCMAKE_CXX_FLAGS="--coverage"
-colcon test
-```
-
-## Continuous Integration
-
-The repository includes GitHub Actions workflows for:
-
-- **Linting**: Pre-commit hooks, cpplint, pydocstyle, ament tools
-- **Multi-Distribution Testing**: Automated testing on ROS 2 Humble and Iron
-- **Code Coverage**: Coverage reporting with gcovr and Codecov integration
-
-All contributions are automatically validated against these checks.
-
 ## Hardware Requirements
 
 ### Supported Devices
@@ -400,8 +392,6 @@ Built on the robust `ros2_control` framework and designed for seamless integrati
     - [2. Firmware Development](#2-firmware-development)
     - [3. ROS 2 Integration](#3-ros-2-integration)
     - [4. Live Debugging](#4-live-debugging)
-  - [Testing](#testing)
-  - [Continuous Integration](#continuous-integration)
   - [Hardware Requirements](#hardware-requirements)
     - [Supported Devices](#supported-devices)
     - [USB Permissions](#usb-permissions)
@@ -582,6 +572,3 @@ Here are some useful references for developing with ROS 2:
  - [Colcon Documentation](https://colcon.readthedocs.io/en/released/#)
  - [ROS 2 Design Documentation](https://design.ros2.org/)
  - [ROS 2 Launch Architecture](https://github.com/ros2/launch/blob/master/launch/doc/source/architecture.rst)
-
-Pluginlib-Library: hid_hardware
-Plugin: hid_hardware/HidHardware (hardware_interface::SystemInterface)
