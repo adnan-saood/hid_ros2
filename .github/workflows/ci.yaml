@@ -42,10 +42,8 @@ jobs:
       - name: Install pre-commit
         run: pip install pre-commit
 
-      - name: Source ROS environment
-        run: echo "source /opt/ros/humble/setup.bash" >> $GITHUB_ENV
-
       - name: Run pre-commit
+        shell: bash
         run: |
           source /opt/ros/humble/setup.bash
           pre-commit run --all-files --show-diff-on-failure
@@ -97,25 +95,21 @@ jobs:
           rosdep install --from-paths src --ignore-src -r -y
 
       - name: Build workspace
+        shell: bash
         run: |
-          source /opt/ros/${{ matrix.ros_distro }}/setup.sh
-          colcon build \
-            --cmake-args \
-              -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            --event-handlers console_direct+
+          . /opt/ros/${{ matrix.ros_distro }}/setup.sh
+          colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
       - name: Run tests
+        shell: bash
         run: |
-          source /opt/ros/${{ matrix.ros_distro }}/setup.sh
-          colcon test \
-            --event-handlers console_direct+ \
-            --return-code-on-test-failure
+          . /opt/ros/${{ matrix.ros_distro }}/setup.sh
+          colcon test --event-handlers console_direct+
 
-      - name: Show test results
-        if: always()
+      - name: Display test results
+        shell: bash
         run: |
-          colcon test-result --verbose
+          colcon test-result --all --verbose
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -163,33 +157,23 @@ jobs:
           rosdep update
           rosdep install --from-paths src --ignore-src -r -y
 
-      - name: Build with coverage
+      - name: Build workspace with coverage
+        shell: bash
         run: |
-          source /opt/ros/humble/setup.bash
-          colcon build \
-            --cmake-args \
-              -DCMAKE_BUILD_TYPE=Debug \
-              -DCMAKE_CXX_FLAGS="--coverage" \
-              -DCMAKE_C_FLAGS="--coverage" \
-            --event-handlers console_direct+
+          . /opt/ros/humble/setup.sh
+          colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" -DCMAKE_C_FLAGS="--coverage"
 
       - name: Run tests
+        shell: bash
         run: |
-          source /opt/ros/humble/setup.bash
+          . /opt/ros/humble/setup.sh
           colcon test --event-handlers console_direct+
 
       - name: Generate coverage report
+        shell: bash
         run: |
-          gcovr -r . \
-            --filter 'src/hid_ros2/hid_hardware/src/.*' \
-            --filter 'src/hid_ros2/hid_generic_broadcaster/src/.*' \
-            --filter 'src/hid_ros2/hid_diagnostic_broadcaster/src/.*' \
-            --filter 'src/hid_ros2/signal_command_controller/src/.*' \
-            --filter 'src/hid_ros2/dummy_pose_broadcaster/src/.*' \
-            --exclude 'build/.*' \
-            --exclude '.*test.*' \
-            --xml coverage.xml \
-            --print-summary
+          . /opt/ros/humble/setup.sh
+          gcovr --xml coverage.xml --root . --exclude-unreachable-branches --exclude-throw-branches -e ".*/test/.*" -e ".*/build/.*"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
