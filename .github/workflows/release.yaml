@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Triggers on tags like v1.0.0, v0.1.0, etc.
+  workflow_dispatch:  # Manual trigger
+
+permissions:
+  contents: write  # Required to create releases
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for changelog
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=dev-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create source archives
+        run: |
+          # Create clean source package (exclude build artifacts)
+          mkdir -p release
+
+          # Create zip archive
+          git archive --format=zip --prefix=hid_ros2-${{ steps.get_version.outputs.VERSION }}/ \
+            HEAD -o release/hid_ros2-${{ steps.get_version.outputs.VERSION }}-source.zip
+
+          # Create tar.gz archive
+          git archive --format=tar.gz --prefix=hid_ros2-${{ steps.get_version.outputs.VERSION }}/ \
+            HEAD -o release/hid_ros2-${{ steps.get_version.outputs.VERSION }}-source.tar.gz
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get changes since last tag
+          PREVIOUS_TAG=$(git describe --abbrev=0 --tags $(git rev-list --tags --skip=1 --max-count=1) 2>/dev/null || echo "")
+
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "## Changes since $PREVIOUS_TAG" > CHANGELOG.md
+            git log $PREVIOUS_TAG..HEAD --pretty=format:"- %s (%an)" >> CHANGELOG.md
+          else
+            echo "## Initial Release" > CHANGELOG.md
+            echo "First release of HID ROS 2 framework" >> CHANGELOG.md
+          fi
+
+          # Add documentation link
+          echo "" >> CHANGELOG.md
+          echo "## Documentation" >> CHANGELOG.md
+          echo "- [Online Documentation](https://adnan-saood.github.io/hid_ros2/)" >> CHANGELOG.md
+          echo "- [Installation Guide](https://adnan-saood.github.io/hid_ros2/installation.html)" >> CHANGELOG.md
+          echo "- [Quick Start](https://adnan-saood.github.io/hid_ros2/quickstart.html)" >> CHANGELOG.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
+          name: Release ${{ steps.get_version.outputs.VERSION }}
+          body_path: CHANGELOG.md
+          files: |
+            release/hid_ros2-${{ steps.get_version.outputs.VERSION }}-source.zip
+            release/hid_ros2-${{ steps.get_version.outputs.VERSION }}-source.tar.gz
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
